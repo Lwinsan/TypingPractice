@@ -41,8 +41,8 @@ export const LEARNING_SEQUENCES = {
 };
 
 export const INITIAL_UNLOCKED = {
-  english: ['e', 'n', 'i', 'a', 'r', 'l'],
-  myanmar: ['က', 'မ', 'အ', 'စ', 'ပ', 'န']
+  english: ['e', 'n', 'i', 'a'],
+  myanmar: ['က', 'မ', 'အ', 'စ']
 };
 
 export const KEYBOARD_LAYOUTS = {

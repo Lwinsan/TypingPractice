@@ -15,8 +15,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('practice');
   const [language, setLanguage] = useState<Language>('english');
   const [difficulty, setDifficulty] = useState('medium');
-  const { progress, saveStats, unlockNextKey } = useStorage();
+  const { progress, saveStats, checkMasteryAndUnlock } = useStorage();
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
+
+  const [fontSize, setFontSize] = useState(32);
+  const [maxWidth, setMaxWidth] = useState(1000);
 
   const [customText, setCustomText] = useState('');
   const [mode, setMode] = useState<'learn' | 'phrase' | 'custom'>('learn');
@@ -28,16 +31,16 @@ export default function App() {
     // Learning mode - generate text from unlocked keys
     const unlocked = progress?.unlockedKeys?.[language] || [];
     return [generatePracticeText(unlocked)];
-  }, [mode, customText, language, progress.unlockedKeys]);
+  }, [mode, customText, language, progress?.unlockedKeys]);
 
   const currentText = phrases[currentTextIndex % phrases.length];
 
   const handleComplete = (stats: TypingStats) => {
     saveStats(stats);
     
-    // Unlock logic for learning mode
-    if (mode === 'learn' && stats.wpm > 30 && stats.accuracy > 95) {
-      unlockNextKey(language);
+    // Unlock logic based on mastery performance
+    if (mode === 'learn') {
+      checkMasteryAndUnlock(language, stats);
     }
 
     if (stats.wpm > 80 || stats.accuracy === 100) {
@@ -63,84 +66,55 @@ export default function App() {
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative">
+        {/* Floating Headers (Keybr Style) */}
+        <div className="sticky top-0 z-10 px-8 py-4 flex justify-between items-center bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Font Size</span>
+                <input 
+                  type="range" min="16" max="64" value={fontSize} 
+                  onChange={(e) => setFontSize(parseInt(e.target.value))}
+                  className="w-24 h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Width</span>
+                <input 
+                  type="range" min="600" max="1400" value={maxWidth} 
+                  onChange={(e) => setMaxWidth(parseInt(e.target.value))}
+                  className="w-24 h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
+                />
+              </div>
+           </div>
+
+           <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Daily Goal</span>
+                <div className="w-32 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mt-1">
+                  <div className="h-full bg-indigo-600 rounded-full w-1/3" />
+                </div>
+              </div>
+              <button className="flex flex-col items-center gap-1 group">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm group-hover:bg-slate-300 transition-colors">
+                   <Target className="h-5 w-5 text-slate-500" />
+                </div>
+                <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Sign-In</span>
+              </button>
+           </div>
+        </div>
+
         <div className="max-w-6xl mx-auto p-6 md:p-10">
           
           {activeTab === 'practice' && (
-            <div className="space-y-8">
+            <div className="space-y-12">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div className="space-y-1">
-                  <h2 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">Learn {language === 'english' ? 'English' : 'မြန်မာ'}</h2>
-                  <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-800/30">
-                    <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-widest">Level {progress.level}</span>
-                    <div className="w-24 h-1.5 bg-indigo-200 dark:bg-indigo-900/50 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-600 transition-all duration-500" style={{ width: `${currentLevelInfo.progressPercent}%` }} />
-                    </div>
-                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{progress.totalPoints.toLocaleString()} PTS</span>
+                <div className="space-y-2 w-full">
+                  <div className="flex items-center justify-between mb-2">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">All Keys Status</h3>
+                     <span className="text-[10px] font-bold text-indigo-600">{progress?.unlockedKeys?.[language]?.length} Mastered</span>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <button 
-                    onClick={() => setMode('learn')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                      mode === 'learn' ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    Learn
-                  </button>
-                  <button 
-                    onClick={() => setMode('phrase')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                      mode === 'phrase' ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    Phrases
-                  </button>
-                  <button 
-                    onClick={() => setMode('custom')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                      mode === 'custom' ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    Custom
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <button 
-                    onClick={() => setLanguage('english')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                      language === 'english' ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    English
-                  </button>
-                  <button 
-                    onClick={() => setLanguage('myanmar')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                      language === 'myanmar' ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    မြန်မာ
-                  </button>
-                </div>
-              </div>
-
-              {mode === 'learn' && (
-                <div className="space-y-4 animate-in fade-in duration-500">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Keys Mastered</h3>
-                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                      {progress?.unlockedKeys?.[language]?.length || 0} / {LEARNING_SEQUENCES[language].length}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1">
                     {LEARNING_SEQUENCES[language].map((key, i) => {
                       const isUnlocked = progress?.unlockedKeys?.[language]?.includes(key);
                       const isNext = !isUnlocked && (i === 0 || progress?.unlockedKeys?.[language]?.includes(LEARNING_SEQUENCES[language][i-1]));
@@ -149,46 +123,64 @@ export default function App() {
                         <div 
                           key={i}
                           className={cn(
-                            "w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-bold uppercase transition-all duration-300",
+                            "w-8 h-8 flex items-center justify-center rounded text-[10px] font-black transition-all border",
                             isUnlocked 
-                              ? "bg-indigo-600 border-indigo-700 text-white shadow-sm" 
-                              : isNext 
-                              ? "bg-white border-2 border-indigo-400 text-indigo-600 animate-pulse"
-                              : "bg-slate-100 border-slate-200 text-slate-300 opacity-50"
+                                ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 border-emerald-100" 
+                                : isNext
+                                ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-125 z-10 shadow-lg shadow-indigo-100 animate-pulse"
+                                : "bg-slate-50 dark:bg-slate-900/50 text-slate-300 border-transparent"
                           )}
                         >
-                          {isUnlocked ? <Check className="h-3 w-3" /> : key}
+                          {key}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {mode === 'custom' && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                  <textarea
-                    value={customText}
-                    onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Paste your custom text here to practice (min 10 characters)..."
-                    className="w-full h-32 p-4 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  />
-                  {customText.length > 0 && customText.length < 10 && (
-                    <p className="text-xs text-red-500 mt-2">Text too short to practice.</p>
-                  )}
+              <div className="space-y-8">
+                <div className="flex justify-center gap-4">
+                  <button onClick={() => setLanguage('english')} className={cn("px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", language === 'english' ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500")}>English</button>
+                  <button onClick={() => setLanguage('myanmar')} className={cn("px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", language === 'myanmar' ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500")}>Myanmar</button>
                 </div>
-              )}
 
-              <div className="space-y-12">
+                <div className="flex justify-center gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg w-fit mx-auto">
+                  {(['learn', 'phrase', 'custom'] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setMode(m)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
+                        mode === m ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+
                 <TypingEngine 
                   targetText={currentText} 
                   language={language}
                   onComplete={handleComplete}
                   onNext={handleNext}
+                  fontSize={fontSize}
+                  maxWidth={maxWidth}
                 />
 
+                {mode === 'custom' && (
+                  <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-top-4 duration-300">
+                    <textarea
+                      value={customText}
+                      onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="Paste your custom text here to practice (min 10 characters)..."
+                      className="w-full h-32 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">Visual Guide</h3>
                   <Keyboard language={language} nextKey={currentText[0]} />
                 </div>
               </div>

@@ -12,6 +12,7 @@ const INITIAL_PROGRESS: UserProgress = {
   level: 1,
   dailyStreak: 0,
   unlockedKeys: INITIAL_UNLOCKED,
+  keyMastery: {},
 };
 
 export function useStorage() {
@@ -66,12 +67,18 @@ export function useStorage() {
 
       const newLevel = Math.floor(Math.sqrt(newPoints / 100)) + 1;
       const newBadges = [...prev.badges];
+      
+      // Update Key Mastery
+      const newKeyMastery = { ...prev.keyMastery };
+      const currentText = stats.totalChars > 0 ? true : false; // Placeholder for actual keys used
+      
+      // Basic badge logic
       if (stats.wpm >= 60 && !newBadges.includes('speed_demon')) newBadges.push('speed_demon');
       if (stats.accuracy === 100 && !newBadges.includes('perfect_accuracy')) newBadges.push('perfect_accuracy');
       if (newHistory.length === 1 && !newBadges.includes('first_run')) newBadges.push('first_run');
       if (newStreak >= 7 && !newBadges.includes('daily_warrior')) newBadges.push('daily_warrior');
 
-      const newState = {
+      const newState: UserProgress = {
         ...prev,
         statsHistory: newHistory,
         totalPoints: newPoints,
@@ -79,6 +86,7 @@ export function useStorage() {
         badges: newBadges,
         dailyStreak: newStreak,
         lastDailyChallenge: lastDaily,
+        keyMastery: newKeyMastery,
       };
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
@@ -86,24 +94,32 @@ export function useStorage() {
     });
   };
 
-  const unlockNextKey = (language: Language) => {
+  const checkMasteryAndUnlock = (language: 'english' | 'myanmar', stats: TypingStats) => {
     setProgress(prev => {
-      const current = prev.unlockedKeys[language];
-      const fullSequence = LEARNING_SEQUENCES[language];
-      if (current.length >= fullSequence.length) return prev;
-
-      const nextKey = fullSequence[current.length];
-      const newState = {
-        ...prev,
-        unlockedKeys: {
-          ...prev.unlockedKeys,
-          [language]: [...current, nextKey]
-        }
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-      return newState;
+      const currentUnlocked = prev.unlockedKeys[language];
+      const sequence = LEARNING_SEQUENCES[language];
+      const nextKeyIndex = currentUnlocked.length;
+      
+      if (nextKeyIndex >= sequence.length) return prev;
+      
+      // To unlock next key, must have >40 WPM and >96% accuracy on current session
+      if (stats.wpm >= 40 && stats.accuracy >= 97) {
+        const nextKey = sequence[nextKeyIndex];
+        const updatedUnlocked = [...currentUnlocked, nextKey];
+        
+        const newState = {
+          ...prev,
+          unlockedKeys: {
+            ...prev.unlockedKeys,
+            [language]: updatedUnlocked
+          }
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+        return newState;
+      }
+      return prev;
     });
   };
 
-  return { progress, saveStats, unlockNextKey };
+  return { progress, saveStats, checkMasteryAndUnlock };
 }

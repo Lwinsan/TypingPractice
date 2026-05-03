@@ -11,9 +11,18 @@ interface TypingEngineProps {
   language: Language;
   onComplete: (stats: TypingStats) => void;
   onNext: () => void;
+  fontSize?: number;
+  maxWidth?: number;
 }
 
-export function TypingEngine({ targetText, language, onComplete, onNext }: TypingEngineProps) {
+export function TypingEngine({ 
+  targetText, 
+  language, 
+  onComplete, 
+  onNext,
+  fontSize = 32,
+  maxWidth = 1000
+}: TypingEngineProps) {
   const { userInput, cursorIndex, errorCount, isFinished, handleInput, reset, getStats, startTime } = useTyping(targetText, language);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,25 +58,22 @@ export function TypingEngine({ targetText, language, onComplete, onNext }: Typin
   const currentWpm = startTime ? Math.round((cursorIndex / 5) / (elapsed / 60)) : 0;
 
   return (
-    <div className="flex flex-col gap-10 w-full max-w-4xl mx-auto p-4">
-      {/* Real-time floating stats */}
-      <div className="grid grid-cols-3 gap-6">
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-          <p className="text-[10px] text-slate-400 uppercase font-black mb-1 tracking-widest">WPM</p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white">{currentWpm || 0}</p>
+    <div className="flex flex-col gap-10 w-full mx-auto p-4 transition-all duration-300" style={{ maxWidth: `${maxWidth}px` }}>
+      {/* Real-time Metrics in keybr style */}
+      <div className="flex justify-center gap-8 text-xs font-medium text-slate-400">
+        <div className="flex items-center gap-2">
+          <span>Speed: <span className="text-slate-900 dark:text-white font-bold">{currentWpm || 0} wpm</span></span>
         </div>
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-          <p className="text-[10px] text-slate-400 uppercase font-black mb-1 tracking-widest">Accuracy</p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white">{getAccuracy()}%</p>
+        <div className="flex items-center gap-2">
+          <span>Accuracy: <span className="text-slate-900 dark:text-white font-bold">{getAccuracy()}%</span></span>
         </div>
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-          <p className="text-[10px] text-slate-400 uppercase font-black mb-1 tracking-widest">Time</p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white">{elapsed.toFixed(0)}s</p>
+        <div className="flex items-center gap-2">
+          <span>Time: <span className="text-slate-900 dark:text-white font-bold">{elapsed.toFixed(0)}s</span></span>
         </div>
       </div>
 
-      {/* Typing Area */}
-      <div className="relative p-12 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden group">
+      {/* Typing Area - Minimal Floating */}
+      <div className="relative py-12 px-6 overflow-hidden group">
         <input
           ref={inputRef}
           type="text"
@@ -76,10 +82,13 @@ export function TypingEngine({ targetText, language, onComplete, onNext }: Typin
           autoFocus
         />
         
-        <div className={cn(
-          "text-3xl md:text-5xl leading-relaxed text-center break-words tracking-tight",
-          language === 'myanmar' ? "myanmar-typing-font" : "typing-font"
-        )}>
+        <div 
+          className={cn(
+            "leading-relaxed text-left break-words tracking-tight",
+            language === 'myanmar' ? "myanmar-typing-font" : "typing-font"
+          )}
+          style={{ fontSize: `${fontSize}px` }}
+        >
           {targetText.split('').map((char, i) => {
             let status = 'pending';
             if (i < cursorIndex) {
@@ -92,12 +101,12 @@ export function TypingEngine({ targetText, language, onComplete, onNext }: Typin
               <span
                 key={i}
                 className={cn(
-                  "relative transition-all duration-150 rounded-sm px-[2px]",
-                  status === 'correct' ? "text-slate-900 dark:text-slate-100 font-medium" : "text-slate-200 dark:text-slate-800 font-light",
-                  status === 'cursor' && "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-indigo-600 shadow-[0_4px_12px_rgba(79,70,229,0.1)]"
+                  "relative transition-all duration-75 rounded-sm",
+                  status === 'correct' ? "text-slate-800 dark:text-slate-200" : "text-slate-300 dark:text-slate-700",
+                  status === 'cursor' && "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 animate-pulse"
                 )}
               >
-                {char}
+                {char === ' ' ? '·' : char}
               </span>
             );
           })}

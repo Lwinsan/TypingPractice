@@ -19,12 +19,21 @@ export function calculateAccuracy(total: number, errors: number) {
 }
 
 export function generatePracticeText(unlockedKeys: string[], wordCount: number = 20) {
+  if (unlockedKeys.length === 0) return "loading";
+  
   const words = [];
+  const latestKey = unlockedKeys[unlockedKeys.length - 1];
+  
   for (let i = 0; i < wordCount; i++) {
     const wordLength = Math.floor(Math.random() * 5) + 3; // 3-8 chars
     let word = '';
     for (let j = 0; j < wordLength; j++) {
-      word += unlockedKeys[Math.floor(Math.random() * unlockedKeys.length)];
+      // 40% chance to use the latest key for better practice
+      if (Math.random() < 0.4) {
+        word += latestKey;
+      } else {
+        word += unlockedKeys[Math.floor(Math.random() * unlockedKeys.length)];
+      }
     }
     words.push(word);
   }

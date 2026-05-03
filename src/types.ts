@@ -13,16 +13,25 @@ export interface TypingStats {
   mode: 'practice' | 'test' | 'daily' | 'custom';
 }
 
+export interface KeyStats {
+  wpm: number;
+  accuracy: number;
+  count: number;
+}
+
 export interface UserProgress {
   statsHistory: TypingStats[];
   totalPoints: number;
   badges: string[];
   level: number;
   dailyStreak: number;
-  lastDailyChallenge?: string; // date string
+  lastDailyChallenge?: string;
   unlockedKeys: {
     english: string[];
     myanmar: string[];
+  };
+  keyMastery: {
+    [key: string]: KeyStats;
   };
 }
 
